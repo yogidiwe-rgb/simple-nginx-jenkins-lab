@@ -4,8 +4,7 @@ kind: Kustomization
 namespace: test
 
 resources:
-  - ../base/deployment.yaml
-  - ../base/service.yaml
+  - ../base
 
 images:
   - name: DOCKERHUB_USERNAME/simple-nginx-app
