@@ -6,8 +6,8 @@ pipeline {
         string(name: 'DOCKERHUB_REPO', defaultValue: 'DOCKERHUB_USERNAME/simple-nginx-app', description: 'Docker Hub repository, for example username/simple-nginx-app')
         string(name: 'GIT_REPO_URL', defaultValue: 'https://github.com/GITHUB_USERNAME/simple-nginx-app.git', description: 'GitHub repository URL')
         string(name: 'GIT_BRANCH', defaultValue: 'main', description: 'Branch to checkout')
-        string(name: 'TEST_KUBE_CONTEXT', defaultValue: 'kind-test', description: 'kubectl context for the test kind cluster')
-        string(name: 'PROD_KUBE_CONTEXT', defaultValue: 'kind-prod', description: 'kubectl context for the prod kind cluster')
+        string(name: 'TEST_KUBE_CONTEXT', defaultValue: 'kind-test-cluster', description: 'kubectl context for the test kind cluster')
+        string(name: 'PROD_KUBE_CONTEXT', defaultValue: 'kind-prod-cluster', description: 'kubectl context for the prod kind cluster')
     }
 
     environment {
@@ -45,42 +45,67 @@ pipeline {
 
         stage('Static Validation') {
             steps {
-                sh 'docker --version'
-                sh 'kubectl version --client=true'
-                sh 'kubectl kustomize k8s/${DEPLOY_ENV}'
+                script {
+                    runCmd('docker --version')
+                    runCmd('kubectl version --client=true')
+                    runCmd("kubectl kustomize k8s/${env.DEPLOY_ENV}")
+                }
             }
         }
 
         stage('Build & Tag') {
             steps {
-                sh 'docker build --build-arg APP_ENV=${APP_ENV} -t ${IMAGE_URI} .'
+                script {
+                    runCmd("docker build --build-arg APP_ENV=${env.APP_ENV} -t ${env.IMAGE_URI} .")
+                }
             }
         }
 
         stage('Push') {
             steps {
                 withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS_ID, usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_TOKEN')]) {
-                    sh 'echo "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin'
-                    sh 'docker push ${IMAGE_URI}'
+                    script {
+                        if (isUnix()) {
+                            sh 'echo "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin'
+                        } else {
+                            powershell '$env:DOCKERHUB_TOKEN | docker login --username $env:DOCKERHUB_USERNAME --password-stdin'
+                        }
+                        runCmd("docker push ${env.IMAGE_URI}")
+                    }
                 }
             }
         }
 
         stage('Deploy') {
             steps {
-                sh 'kubectl --context ${KUBE_CONTEXT} create namespace ${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl --context ${KUBE_CONTEXT} apply -f -'
-                sh 'kubectl --context ${KUBE_CONTEXT} kustomize k8s/${DEPLOY_ENV} | sed "s|DOCKERHUB_USERNAME/simple-nginx-app|${DOCKERHUB_REPO}|g" | kubectl --context ${KUBE_CONTEXT} apply -f -'
-                sh 'kubectl --context ${KUBE_CONTEXT} rollout status deployment/${APP_NAME} -n ${KUBE_NAMESPACE} --timeout=120s'
+                script {
+                    runCmd("kubectl --context ${env.KUBE_CONTEXT} create namespace ${env.KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl --context ${env.KUBE_CONTEXT} apply -f -")
+                    if (isUnix()) {
+                        sh "kubectl --context ${env.KUBE_CONTEXT} kustomize k8s/${env.DEPLOY_ENV} | sed 's|DOCKERHUB_USERNAME/simple-nginx-app|${params.DOCKERHUB_REPO}|g' | kubectl --context ${env.KUBE_CONTEXT} apply -f -"
+                    } else {
+                        powershell "kubectl --context ${env.KUBE_CONTEXT} kustomize k8s/${env.DEPLOY_ENV} | ForEach-Object { \$_ -replace 'DOCKERHUB_USERNAME/simple-nginx-app', '${params.DOCKERHUB_REPO}' } | kubectl --context ${env.KUBE_CONTEXT} apply -f -"
+                    }
+                    runCmd("kubectl --context ${env.KUBE_CONTEXT} rollout status deployment/${env.APP_NAME} -n ${env.KUBE_NAMESPACE} --timeout=120s")
+                }
             }
         }
     }
 
     post {
         always {
-            sh 'docker logout || true'
+            script {
+                runCmd('docker logout', true)
+            }
         }
         success {
             echo "Deployment succeeded: ${IMAGE_URI} to ${KUBE_CONTEXT}/${KUBE_NAMESPACE}"
         }
     }
+}
+
+def runCmd(String command, boolean returnStatus = false) {
+    if (isUnix()) {
+        return sh(script: command, returnStatus: returnStatus)
+    }
+    return powershell(script: command, returnStatus: returnStatus)
 }
