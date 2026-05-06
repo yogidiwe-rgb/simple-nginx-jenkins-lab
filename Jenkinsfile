@@ -4,7 +4,6 @@ pipeline {
     parameters {
         choice(name: 'TARGET_ENV', choices: ['auto', 'test', 'prod'], description: 'Deployment target. auto maps main/master to prod and all other branches to test.')
         string(name: 'DOCKERHUB_REPO', defaultValue: 'yogisre12345/simple-nginx-app', description: 'Docker Hub repository, for example username/simple-nginx-app')
-        string(name: 'GIT_REPO_URL', defaultValue: 'https://github.com/yogidiwe-rgb/simple-nginx-jenkins-lab.git', description: 'GitHub repository URL')
         string(name: 'GIT_BRANCH', defaultValue: 'main', description: 'Branch to checkout')
         string(name: 'TEST_KUBE_CONTEXT', defaultValue: 'kind-test-cluster', description: 'kubectl context for the test kind cluster')
         string(name: 'PROD_KUBE_CONTEXT', defaultValue: 'kind-prod-cluster', description: 'kubectl context for the prod kind cluster')
@@ -17,14 +16,6 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                git branch: params.GIT_BRANCH,
-                    credentialsId: env.GITHUB_CREDENTIALS_ID,
-                    url: params.GIT_REPO_URL
-            }
-        }
-
         stage('Resolve Environment') {
             steps {
                 script {
