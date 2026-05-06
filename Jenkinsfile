@@ -3,7 +3,7 @@ pipeline {
 
     parameters {
         choice(name: 'TARGET_ENV', choices: ['auto', 'test', 'prod'], description: 'Deployment target. auto maps main/master to prod and all other branches to test.')
-        string(name: 'DOCKERHUB_REPO', defaultValue: 'DOCKERHUB_USERNAME/simple-nginx-app', description: 'Docker Hub repository, for example username/simple-nginx-app')
+        string(name: 'DOCKERHUB_REPO', defaultValue: 'yogisre12345/simple-nginx-app', description: 'Docker Hub repository, for example username/simple-nginx-app')
         string(name: 'GIT_REPO_URL', defaultValue: 'https://github.com/GITHUB_USERNAME/simple-nginx-app.git', description: 'GitHub repository URL')
         string(name: 'GIT_BRANCH', defaultValue: 'main', description: 'Branch to checkout')
         string(name: 'TEST_KUBE_CONTEXT', defaultValue: 'kind-test-cluster', description: 'kubectl context for the test kind cluster')
