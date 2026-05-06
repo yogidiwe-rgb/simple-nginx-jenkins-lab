@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: test
+
+resources:
+  - ../base/deployment.yaml
+  - ../base/service.yaml
+
+images:
+  - name: DOCKERHUB_USERNAME/simple-nginx-app
+    newName: DOCKERHUB_USERNAME/simple-nginx-app
+    newTag: test
+
+replicas:
+  - name: simple-nginx-app
+    count: 1

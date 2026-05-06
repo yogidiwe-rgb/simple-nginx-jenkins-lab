@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simple-nginx-app
+  labels:
+    app: simple-nginx-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: simple-nginx-app
+  template:
+    metadata:
+      labels:
+        app: simple-nginx-app
+    spec:
+      containers:
+        - name: simple-nginx-app
+          image: DOCKERHUB_USERNAME/simple-nginx-app:IMAGE_TAG
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
