@@ -76,6 +76,7 @@ pipeline {
                     } else {
                         powershell "kubectl --context ${env.KUBE_CONTEXT} kustomize k8s/${env.DEPLOY_ENV} | ForEach-Object { \$_ -replace 'DOCKERHUB_USERNAME/simple-nginx-app', '${params.DOCKERHUB_REPO}' } | kubectl --context ${env.KUBE_CONTEXT} apply -f -"
                     }
+                    runCmd("kubectl --context ${env.KUBE_CONTEXT} rollout restart deployment/${env.APP_NAME} -n ${env.KUBE_NAMESPACE}")
                     runCmd("kubectl --context ${env.KUBE_CONTEXT} rollout status deployment/${env.APP_NAME} -n ${env.KUBE_NAMESPACE} --timeout=120s")
                 }
             }
